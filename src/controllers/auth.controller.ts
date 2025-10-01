@@ -3,16 +3,16 @@ import bcrypt from "bcryptjs";
 import { User } from "../model/user.model.js";
 import { createAccessToken, createRefreshToken } from "../utils/tokengenerator.js";
 import { uploadCloudinary } from "../utils/cloudinary.js";
-import { redisClient } from "../utils/redisClient.js";
+// import { redisClient } from "../utils/redisClient.js";
 import { v4 as uuidv4 } from 'uuid';
 
 export const register = async (req: Request, res: Response) => {
   
   try {
 
-    const { name,email, password } = req.body;
+    const { userId,name,email, password } = req.body;
 
-    if (!name || !email || !password) {
+    if (!userId || !name || !email || !password) {
       return res
         .status(400)
         .json({ message: "every field are required" });
@@ -58,23 +58,28 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { userId, email, password } = req.body;
     
-   
-    if (!email || !password) return res.status(400).json({ message: "Email and password required" });
+    if ((!userId && !email) || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
     
-    const user = await User.findOne({ email }).select("+password");
+    const query = userId ? 
+      { $or: [{ _id: userId }, { email: userId }] } : 
+      { email: email }; 
+
+    const user = await User.findOne(query).select("+password");
     if (!user) return res.status(404).json({ message: "User not found" });
 
-   
+    
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ message: "Invalid credentials" });
 
-
-    const userId = user._id.toString();
+    const actualUserId = user._id.toString();
     const sessionId = uuidv4();
-    const accessToken = createAccessToken(userId);
-    const refreshToken = await createRefreshToken(userId, sessionId);
+    const accessToken = createAccessToken(actualUserId);
+    const refreshToken = await createRefreshToken(actualUserId, sessionId);
    
     res
       .status(200)
@@ -91,7 +96,7 @@ export const login = async (req: Request, res: Response) => {
         maxAge: 7 * 24 * 60 * 60 * 1000,
       })
       .json({
-        user: { id: userId, email: user.email },
+        user: { id: actualUserId, email: user.email },
         accessToken,
         message: "Login successful"
       });

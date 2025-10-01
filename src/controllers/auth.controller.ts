@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import { User } from "../model/user.model.js";
 import { createAccessToken, createRefreshToken } from "../utils/tokengenerator.js";
+import { uploadCloudinary } from "../utils/cloudinary.js";
 import { redisClient } from "../utils/redisClient.js";
 import { v4 as uuidv4 } from 'uuid';
 
@@ -22,9 +23,29 @@ export const register = async (req: Request, res: Response) => {
       return res.status(409).json({ message: "User already exists" });
     }
 
+      if (!req.files || Array.isArray(req.files)) {
+        return res.status(400).json({ message: "avatar file is required" });
+      }
+
+      const avatarLocalPath = (req.files as { [fieldname: string]: Express.Multer.File[] })["avatar"]?.[0]?.path;
+  console.log("avtar",avatarLocalPath)
+
+  if (!avatarLocalPath) {
+   return res.status(400).json({ message: "avatar file is required" });
+  }
+
+  const avatar = await uploadCloudinary(avatarLocalPath)
+
+
+  if (!avatar) {
+    return res.status(400).json({ message: "avatar file is required" });
+  }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await User.create({name, email, password: hashedPassword });
+    await User.create({name,
+       avatar: avatar.url,
+       email, password: hashedPassword });
        
      return res
       .status(201)

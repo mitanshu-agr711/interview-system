@@ -2,17 +2,16 @@ import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import { User } from "../model/user.model.js";
 import { createAccessToken, createRefreshToken } from "../utils/tokengenerator.js";
-import { uploadCloudinary } from "../utils/cloudinary.js";
-// import { redisClient } from "../utils/redisClient.js";
+
 import { v4 as uuidv4 } from 'uuid';
 
 export const register = async (req: Request, res: Response) => {
   
   try {
 
-    const { userId,name,email, password } = req.body;
+    const { username,name,email, password } = req.body;
 
-    if (!userId || !name || !email || !password) {
+    if (!username || !name || !email || !password) {
       return res
         .status(400)
         .json({ message: "every field are required" });
@@ -43,11 +42,15 @@ export const register = async (req: Request, res: Response) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await User.create({name,
-       avatar: avatar.url,
-       email, password: hashedPassword });
-       
-     return res
+    await User.create({
+      username,
+      name,
+      avatar: avatar.url,
+      email,
+      password: hashedPassword
+    });
+
+    return res
       .status(201)
        .json({ message: "User created successfully" });
         } catch (error) {
@@ -58,15 +61,14 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { userId, email, password } = req.body;
-    
-    if ((!userId && !email) || !password) {
+    const {  username, email, password } = req.body;
+
+    if ((!username && !email) || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    
-    const query = userId ? 
-      { $or: [{ _id: userId }, { email: userId }] } : 
+    const query = username ? 
+      { $or: [{ _id: username }, { email: username }] } : 
       { email: email }; 
 
     const user = await User.findOne(query).select("+password");

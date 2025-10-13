@@ -6,55 +6,32 @@ import { createAccessToken, createRefreshToken } from "../utils/tokengenerator.j
 import { v4 as uuidv4 } from 'uuid';
 
 export const register = async (req: Request, res: Response) => {
-  
   try {
+    const { username, name, email, password, avatar } = req.body;
 
-    const { username,name,email, password } = req.body;
-
-    if (!username || !name || !email || !password) {
-      return res
-        .status(400)
-        .json({ message: "every field are required" });
+    if (!username || !name || !email || !password || !avatar) {
+      return res.status(400).json({ message: "Every field is required" });
     }
-    
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({ message: "User already exists" });
     }
-
-      if (!req.files || Array.isArray(req.files)) {
-        return res.status(400).json({ message: "avatar file is required" });
-      }
-
-      const avatarLocalPath = (req.files as { [fieldname: string]: Express.Multer.File[] })["avatar"]?.[0]?.path;
-  console.log("avtar",avatarLocalPath)
-
-  if (!avatarLocalPath) {
-   return res.status(400).json({ message: "avatar file is required" });
-  }
-
-  const avatar = await uploadCloudinary(avatarLocalPath)
-
-
-  if (!avatar) {
-    return res.status(400).json({ message: "avatar file is required" });
-  }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     await User.create({
       username,
       name,
-      avatar: avatar.url,
       email,
-      password: hashedPassword
+      avatar,
+      password: hashedPassword,
     });
 
-    return res
-      .status(201)
-       .json({ message: "User created successfully" });
-        } catch (error) {
-    return res.status(400).json({ error });
+    return res.status(201).json({ message: "User created successfully" });
+  } catch (error) {
+    console.error("Registration error:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 

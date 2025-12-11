@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Workspace } from "../model/workspace.model.js";
-import { Interview } from "../model/interview.model.js";
+
 
 
 declare global {
@@ -12,14 +12,15 @@ declare global {
 }
 
 
-export const createWorkspace = async (req: Request, res: Response) => {
+export const createWorkspace = async (req: Request, res: Response): Promise<void> => {
   try {
 
     const { title } = req.body;
     const userId = req.userId;
 
     if (!title) {
-      return res.status(400).json({ message: "Title is required" });
+      res.status(400).json({ message: "Title is required" });
+      return;
     }
 
     const workspace = await Workspace.create({
@@ -27,21 +28,24 @@ export const createWorkspace = async (req: Request, res: Response) => {
       createdBy: userId,
     });
 
-    return res.status(201).json({ message: "Workspace created", workspace });
+     res.status(201).json({ message: "Workspace created", workspace });
+      return;
   } catch (error) {
-    return res.status(500).json({ error: "Failed to create workspace" });
+    res.status(500).json({ error: "Failed to create workspace" });
+    return;
   }
 };
 
 
-export const renameWorkspace = async (req: Request, res: Response) => {
+export const renameWorkspace = async (req: Request, res: Response): Promise<void> => {
   try {
     const workspaceId = req.params.id;
     const { title } = req.body;
     const userId = req.userId;
 
     if (!title) {
-      return res.status(400).json({ message: "Title is required" });
+   res.status(400).json({ message: "Title is required" });
+    return;
     }
 
     const workspace = await Workspace.findOneAndUpdate(
@@ -51,18 +55,21 @@ export const renameWorkspace = async (req: Request, res: Response) => {
     );
 
     if (!workspace) {
-      return res.status(404).json({ message: "Workspace not found" });
+      res.status(404).json({ message: "Workspace not found" });
+      return;
     }
 
-    return res.status(200).json({ message: "Workspace renamed", workspace });
+    res.status(200).json({ message: "Workspace renamed", workspace });
+    return;
   } catch (error) {
-    return res.status(500).json({ error: "Failed to rename workspace" });
+    res.status(500).json({ error: "Failed to rename workspace" });
+    return;
   }
 };
 
 
 
-export const deleteWorkspace = async (req: Request, res: Response) => {
+export const deleteWorkspace = async (req: Request, res: Response): Promise<void> => {
   try {
     const workspaceId = req.params.id;
     const userId = req.userId;
@@ -72,16 +79,19 @@ export const deleteWorkspace = async (req: Request, res: Response) => {
       createdBy: userId,
     });
     if (!workspace) {
-      return res.status(404).json({ message: "Workspace not found" });
+     res.status(404).json({ message: "Workspace not found" });
+      return;
     }
-    return res.status(200).json({ message: "Workspace deleted" });
+    res.status(200).json({ message: "Workspace deleted" });
+    return;       
   } catch (error) {
-    return res.status(500).json({ error: "Failed to delete workspace" });
+    res.status(500).json({ error: "Failed to delete workspace" });
+    return;
   }
 };
 
 
-export const getWorkspaces = async (req: Request, res: Response) => {
+export const getWorkspaces = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.userId;
 
@@ -89,16 +99,19 @@ export const getWorkspaces = async (req: Request, res: Response) => {
       .populate("Interviews")
       .exec();
     if (!workspaces || workspaces.length === 0) {
-      return res.status(404).json({ message: "No workspaces found" });
+     res.status(404).json({ message: "No workspaces found" });
+     return;
     }
-    return res.status(200).json({ workspaces });
+    res.status(200).json({ workspaces });
+    return;
   } catch (error) {
-    return res.status(500).json({ error: "Failed to fetch workspaces" });
+    res.status(500).json({ error: "Failed to fetch workspaces" });
+    return;
   }
 };
 
 
-export const getWorkspaceById = async (req: Request, res: Response) => {
+export const getWorkspaceById = async (req: Request, res: Response): Promise<void> => {
   try {
     const workspaceId = req.params.id;
     const userId = req.userId;
@@ -111,72 +124,14 @@ export const getWorkspaceById = async (req: Request, res: Response) => {
       .exec();
 
     if (!workspace) {
-      return res.status(404).json({ message: "Workspace not found" });
+     res.status(404).json({ message: "Workspace not found" });
+     return;
     }
 
-    return res.status(200).json({ workspace });
+    res.status(200).json({ workspace });
+    return; 
   } catch (error) {
-    return res.status(500).json({ error: "Failed to fetch workspace" });
-  }
-};
-
-
-export const addInterview = async (req: Request, res: Response) => {
-  try {
-    const workspaceId = req.params.id;
-    const { interviewId } = req.body;
-    const userId = req.userId;
-
-    if (!interviewId) {
-      return res.status(400).json({ message: "Interview ID is required" });
-    }
-
-    const workspace = await Workspace.findOneAndUpdate(
-      { _id: workspaceId, createdBy: userId },
-      { $addToSet: { Interviews: interviewId } },
-      { new: true }
-    );
-
-    if (!workspace) {
-      return res.status(404).json({ message: "Workspace not found" });
-    }
-
-    return res
-      .status(200)
-      .json({ message: "Interview added to workspace", workspace });
-  } catch (error) {
-    return res
-      .status(500)
-      .json({ error: "Failed to add interview to workspace" });
-  }
-};
-
-
-export const getInterviewByID = async (req: Request, res: Response) => {
-  try {
-    const interviewId = req.params.id;
-    const userId = req.userId;
-
-    const interview = await Interview.findOne({
-      _id: interviewId,
-      practicedBy: userId,
-    }).exec();
-
-    const workspace = await Workspace.findOne({
-      Interviews: interviewId,
-      createdBy: userId,
-    });
-    if (!interview) {
-      return res.status(404).json({ message: "Interview not found" });
-    }
-    if (!workspace) {
-      return res
-        .status(404)
-        .json({ message: "Workspace not found for this interview" });
-    }
-
-    return res.status(200).json({ interview });
-  } catch (error) {
-    return res.status(500).json({ error: "Failed to fetch interview" });
+     res.status(500).json({ error: "Failed to fetch workspace" });
+     return;
   }
 };

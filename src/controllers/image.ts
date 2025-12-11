@@ -30,3 +30,11 @@ export const uploadAvatar = async (req: MulterRequest, res: Response): Promise<R
     data: image,
   });
 };
+
+export const getAllImages = async (req: Request, res: Response): Promise<Response> => {
+  const images = await ImageModel.find();
+  return res.status(200).json({
+    message: "All images fetched successfully",
+    data: images,
+  });
+};

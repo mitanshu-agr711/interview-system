@@ -4,18 +4,21 @@ import { User } from "../model/user.model.js";
 import { createAccessToken, createRefreshToken } from "../utils/tokengenerator.js";
 
 import { v4 as uuidv4 } from 'uuid';
+import { promises } from "dns";
 
-export const register = async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response):Promise<void> => {
   try {
     const { username, name, email, password, avatar } = req.body;
 
     if (!username || !name || !email || !password || !avatar) {
-      return res.status(400).json({ message: "Every field is required" });
+      res.status(400).json({ message: "Every field is required" });
+      return;
     }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(409).json({ message: "User already exists" });
+      res.status(409).json({ message: "User already exists" });
+      return;
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -28,32 +31,39 @@ export const register = async (req: Request, res: Response) => {
       password: hashedPassword,
     });
 
-    return res.status(201).json({ message: "User created successfully" });
+    res.status(201).json({ message: "User created successfully" });
+    return;
   } catch (error) {
     console.error("Registration error:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error" });
+    return;
   }
 };
 
 
-export const login = async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const {  username, email, password } = req.body;
 
     if ((!username && !email) || !password) {
-      return res.status(400).json({ message: "All fields are required" });
+      res.status(400).json({ message: "All fields are required" });
+      return;
     }
 
-    const query = username ? 
-      { $or: [{ _id: username }, { email: username }] } : 
-      { email: email }; 
+    const query = username
+  ? { $or: [{ username: username }, { email: username }] }
+  : { email: email };
+
 
     const user = await User.findOne(query).select("+password");
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user)
+      {res.status(404).json({ message: "User not found" }); return;}
 
     
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ message: "Invalid credentials" });
+    if (!match){res.status(401).json({ message: "Invalid credentials" });
+    return;
+    }
 
     const actualUserId = user._id.toString();
     const sessionId = uuidv4();

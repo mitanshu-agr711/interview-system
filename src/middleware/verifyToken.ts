@@ -13,32 +13,45 @@ declare global {
   }
 }
 
-export const verifyToken = (req: Request, res: Response, next: NextFunction) =>{
+export const verifyToken = (req: any, res: Response, next: NextFunction): void => {
   const authHeader = req.headers["authorization"];
   const token = authHeader?.split(" ")[1];
-  if (!token) return res.sendStatus(401);
 
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET!, (err, payload: any) =>{
-    if (err) return res.sendStatus(403);
-    req.userId = payload.userId;
+  if (!token) {
+    res.status(401).json({ error: "Token missing" });
+    return;
+  }
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET!, (err, payload: any) => {
+    if (err) {
+      res.status(403).json({ error: "Invalid or expired token" });
+      return;
+    }
+
+    
+    req.user = { id: payload.userId }; 
+
     next();
   });
 };
 
 
-export const refreshAccessToken = async (req: Request, res: Response) => {
+export const refreshAccessToken = async (req: Request, res: Response):  Promise<void>=> {
   try {
     const token = req.cookies?.refreshToken;
     const sessionId = req.cookies?.sessionId;
-    if (!token || !sessionId) return res.status(401).json({ message: "No token or session" });
+    if (!token || !sessionId)
+      {  res.status(401).json({ message: "No token or session" });
+    return;
+  }
 
     
     const payload = await verifyRefreshToken(token);
     if (!payload || payload.sessionId !== sessionId) {
-      return res.status(403).json({ message: "Invalid token or session" });
+     { res.status(403).json({ message: "Invalid token or session" });return ;}
     }
 
-    /
+    
     await redisClient.del(`refreshToken:${payload.userId}:${sessionId}`);
 
    

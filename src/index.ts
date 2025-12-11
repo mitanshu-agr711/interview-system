@@ -3,6 +3,7 @@ import cors from "cors";
 
 import router from "./routes/router.auth.js";
 import img  from "./routes/upload.js";
+import answerRouter from "./routes/router.answer.js";
 
 import dotenv from "dotenv";
 dotenv.config();
@@ -22,6 +23,7 @@ app.get("/", (req, res) => {
 });
 app.use("/auth", router);
 app.use("/image", img);
+app.use("/interview", answerRouter);
 
 app.listen(5000, () => {
     console.log(`Server is running on port  5000`);

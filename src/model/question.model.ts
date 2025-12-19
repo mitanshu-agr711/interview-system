@@ -2,12 +2,11 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IQuestion extends Document {
   topic: string;
-  difficulty: 'easy' | 'medium' | 'hard';
   question: string;
   correctAnswer: string;
+  interviewId: mongoose.Types.ObjectId;
+  workspaceId: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
-  workspaceId?: mongoose.Types.ObjectId;
-  interviewSessionId?: string;
 }
 
 const questionSchema: Schema = new Schema(
@@ -17,7 +16,6 @@ const questionSchema: Schema = new Schema(
       required: true,
       trim: true,
     },
-
     question: {
       type: String,
       required: true,
@@ -28,22 +26,30 @@ const questionSchema: Schema = new Schema(
       required: true,
       trim: true,
     },
-    createdBy: {
+    interviewId: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'Interview',
       required: true,
     },
     workspaceId: {
       type: Schema.Types.ObjectId,
       ref: 'Workspace',
+      required: true,
     },
-    interviewSessionId: {
-      type: String,
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
     },
   },
   {
     timestamps: true,
   }
 );
+
+// Indexes for faster queries
+questionSchema.index({ interviewId: 1 });
+questionSchema.index({ workspaceId: 1 });
+questionSchema.index({ createdBy: 1 });
 
 export const Question = mongoose.model<IQuestion>('Question', questionSchema);

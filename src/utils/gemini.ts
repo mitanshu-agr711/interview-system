@@ -69,27 +69,45 @@ Return JSON in this exact format:
 };
 
 export const generateInterviewQuestions = async (
-  topic: string
+  topic: string,
+  count = 30
 ): Promise<Array<{ question: string; correctAnswer: string }>> => {
   try {
     const prompt = `
-Generate 30 interview questions on the topic "${topic}".
+Generate exactly ${count} interview questions on the topic "${topic}".
 
-Return a JSON array in this exact format:
+Return ONLY a JSON array in this exact format.
+Do NOT add any explanation or extra text.
+
 [
   {
     "question": "question text here",
     "correctAnswer": "detailed correct answer here"
   }
 ]
-
-Make sure questions are relevant, clear, and answers are comprehensive.
 `;
-    
+
     let text = await generateWithGroq(prompt);
+
+   
     text = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(text);
-    
+
+    const parsed = JSON.parse(text);
+
+ 
+    const questions = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray(parsed?.questions)
+        ? parsed.questions
+        : null;
+
+    if (!questions) {
+      throw new Error("Invalid AI response format");
+    }
+
+   
+    return questions.slice(0, count);
+
   } catch (error) {
     console.error("Error generating questions with Groq:", error);
     throw new Error("Failed to generate questions");

@@ -29,7 +29,8 @@ export const verifyToken = (req: any, res: Response, next: NextFunction): void =
     }
 
     
-    req.user = { id: payload.userId }; 
+     req.userId = payload.userId;
+ 
 
     next();
   });

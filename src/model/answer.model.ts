@@ -1,18 +1,23 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IAnswer extends Document {
+  interviewId: mongoose.Types.ObjectId;
   questionId: mongoose.Types.ObjectId;
   answeredBy: mongoose.Types.ObjectId;
   userAnswer: string;
   isCorrect: boolean;
   shortReason: string;
   correctedAnswer: string;
-  interviewSessionId?: string;
   timeTaken?: number;
 }
 
 const answerSchema: Schema = new Schema(
   {
+    interviewId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Interview',
+      required: true,
+    },
     questionId: {
       type: Schema.Types.ObjectId,
       ref: 'Question',
@@ -43,9 +48,6 @@ const answerSchema: Schema = new Schema(
       required: true,
       trim: true,
     },
-    interviewSessionId: {
-      type: String,
-    },
     timeTaken: {
       type: Number,
       min: 0,
@@ -55,5 +57,11 @@ const answerSchema: Schema = new Schema(
     timestamps: true,
   }
 );
+
+// Indexes for faster queries
+answerSchema.index({ interviewId: 1 });
+answerSchema.index({ questionId: 1 });
+answerSchema.index({ answeredBy: 1 });
+answerSchema.index({ interviewId: 1, answeredBy: 1 });
 
 export const Answer = mongoose.model<IAnswer>('Answer', answerSchema);

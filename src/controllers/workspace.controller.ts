@@ -31,6 +31,7 @@ export const createWorkspace = async (req: Request, res: Response): Promise<void
      res.status(201).json({ message: "Workspace created", workspace });
       return;
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Failed to create workspace" });
     return;
   }

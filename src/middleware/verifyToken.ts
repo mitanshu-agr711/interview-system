@@ -22,7 +22,7 @@ export const verifyToken = (req: any, res: Response, next: NextFunction): void =
     return;
   }
 
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET!, (err, payload: any) => {
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET!, (err: jwt.VerifyErrors | null, payload: any) => {
     if (err) {
       res.status(403).json({ error: "Invalid or expired token" });
       return;

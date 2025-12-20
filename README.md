@@ -23,24 +23,15 @@ An end-to-end AI-powered interview platform that helps users create, attempt, ev
 🧩 Redis-ready architecture (Upstash supported)
 
 🏗️ High-Level Architecture
-User
- ├── Workspaces
- │     └── Interviews
- │           ├── Questions (AI Generated)
- │           └── Answers (AI Evaluated)
- │
- └── Analytics (User / Topic / Difficulty)
+<img width="613" height="237" alt="image" src="https://github.com/user-attachments/assets/6d0ac78a-dd9f-41c7-9265-a61f1f09ac27" />
+
 
 
 The Interview model acts as the central hub, connecting questions, answers, analytics, and workspaces.
 
 📊 Database Schema Overview
-Relationships
-User (1) ──┬──> (N) Workspace
-           │
-           └──> (N) Interview
-                  ├──> (N) Question
-                  └──> (N) Answer
+<img width="511" height="207" alt="image" src="https://github.com/user-attachments/assets/0b321a16-6919-4ab8-8acf-d1ddd1895a44" />
+
 
 🧑 User Model
 
@@ -229,13 +220,8 @@ Token/session management
 Fully compatible with Upstash Redis for serverless & cloud deployments.
 
 🧪 Example End-to-End Flow
-Create Workspace
-→ Create Interview (AI generates questions)
-→ Start Interview
-→ Submit Answers (AI evaluates)
-→ Complete Interview
-→ View Detailed Report
-→ Analyze Weak Topics
+<img width="533" height="226" alt="image" src="https://github.com/user-attachments/assets/98e2d110-f68e-49dd-928d-642773929495" />
+
 
 🛠️ Tech Stack
 

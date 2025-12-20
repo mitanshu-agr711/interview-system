@@ -31,6 +31,6 @@ export const createRefreshToken = async (userId, sessionId) => {
     const sid = sessionId || uuidv4();
     const options = { expiresIn: refreshTokenExpire };
     const token = jwt.sign({ userId, sid }, refreshSecret, options);
-    await redisClient.set(`refreshToken:${userId}:${sid}`, token, { EX: refreshTokenExpireSec });
+    await redisClient.set(`refreshToken:${userId}:${sid}`, token, { ex: refreshTokenExpireSec });
     return { token, sessionId: sid };
 };

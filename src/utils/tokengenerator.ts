@@ -8,9 +8,9 @@ import { v4 as uuidv4 } from 'uuid'
 const accessSecret: Secret = process.env.ACCESS_TOKEN_SECRET as string;
 const refreshSecret: Secret = process.env.REFRESH_TOKEN_SECRET as string;
 const accessTokenExpire = (process.env.ACCESS_TOKEN_EXPIRE || "15m") as StringValue;
-const refreshTokenExpire = (process.env.REFRESH_TOKEN_EXPIRE || '1d') as StringValue;
+const refreshTokenExpire = (process.env.REFRESH_TOKEN_EXPIRE || '10d') as StringValue;
 const refreshTokenExpireSec = Math.floor(
-  (ms(refreshTokenExpire as ms.StringValue) ?? 86400000) / 1000
+  (ms(refreshTokenExpire as ms.StringValue) ?? 864000000) / 1000
 );
 
 

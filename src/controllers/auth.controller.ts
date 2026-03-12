@@ -72,18 +72,18 @@ export const login = async (req: Request, res: Response): Promise<void> => {
    
     res
       .status(200)
-      .cookie("refreshToken", refreshToken, {
+      .cookie("refreshToken", refreshToken.token, {
         httpOnly: true,
         secure: true,
         sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+        maxAge: 10 * 24 * 60 * 60 * 1000,
          path: "/"
       })
       .cookie("sessionId", sessionId, {
         httpOnly: true,
         secure: true,
         sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+        maxAge: 10 * 24 * 60 * 60 * 1000,
          path: "/"
       })
       .json({

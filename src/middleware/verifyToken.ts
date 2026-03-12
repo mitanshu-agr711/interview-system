@@ -65,13 +65,13 @@ export const refreshAccessToken = async (req: Request, res: Response):  Promise<
         httpOnly: true,
         secure: true,
         sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+        maxAge: 10 * 24 * 60 * 60 * 1000,
       })
       .cookie("sessionId", newSessionId, {
         httpOnly: true,
         secure: true,
         sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+        maxAge: 10 * 24 * 60 * 60 * 1000,
       })
       .json({ accessToken: newAccessToken });
 

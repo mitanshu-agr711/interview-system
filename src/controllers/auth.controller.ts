@@ -85,7 +85,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         maxAge: 7 * 24 * 60 * 60 * 1000,
       })
       .json({
-        user: { id: actualUserId, email: user.email },
+        user: { id: actualUserId, email: user.email,avatar: user.avatar, name: user.name },
         accessToken,
         message: "Login successful"
       });

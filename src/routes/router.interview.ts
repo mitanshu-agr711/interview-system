@@ -25,7 +25,7 @@ router.post('/create', createInterview);
 router.post('/:interviewId/start', startInterview);
 
 
-router.post('/submit-answer', submitAnswer);
+router.post('/submit-answer', submitAnswer);  
 
 router.post('/:interviewId/complete', completeInterview);
 

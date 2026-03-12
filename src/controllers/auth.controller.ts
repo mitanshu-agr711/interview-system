@@ -77,12 +77,14 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         secure: true,
         sameSite: "strict",
         maxAge: 7 * 24 * 60 * 60 * 1000,
+         path: "/"
       })
       .cookie("sessionId", sessionId, {
         httpOnly: true,
         secure: true,
         sameSite: "strict",
         maxAge: 7 * 24 * 60 * 60 * 1000,
+         path: "/"
       })
       .json({
         user: { id: actualUserId, email: user.email,avatar: user.avatar, name: user.name },

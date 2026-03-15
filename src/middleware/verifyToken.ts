@@ -41,8 +41,8 @@ export const refreshAccessToken = async (req: Request, res: Response):  Promise<
   try {
 
 //     console.log("aa rhi hai");
-//     console.log("aa rhi hai");
-// console.log("Cookies:", req.cookies);
+    console.log("aa rhi hai");
+console.log("Cookies:", req.cookies);
     const token = req.cookies?.refreshToken;
     const sessionId = req.cookies?.sessionId;
     if (!token || !sessionId)

@@ -27,8 +27,8 @@ const interviewSchema = new Schema({
     },
     status: {
         type: String,
-        enum: ['draft', 'in-progress', 'completed'],
-        default: 'draft',
+        enum: ['pending', 'in-progress', 'completed'],
+        default: 'pending',
     },
     startedAt: {
         type: Date,

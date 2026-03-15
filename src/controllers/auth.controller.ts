@@ -75,14 +75,16 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       .cookie("refreshToken", refreshToken.token, {
         httpOnly: true,
         secure: true,
-        sameSite: "strict",
+        // secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
         maxAge: 10 * 24 * 60 * 60 * 1000,
          path: "/"
       })
       .cookie("sessionId", sessionId, {
         httpOnly: true,
-        secure: true,
-        sameSite: "strict",
+        secure: true,//when frontend will deploy
+        // secure: process.env.NODE_ENV === "production",
+       sameSite: "lax",
         maxAge: 10 * 24 * 60 * 60 * 1000,
          path: "/"
       })

@@ -7,6 +7,7 @@ import workspaceRouter from "./routes/workspace.js";
 import interviewRouter from "./routes/router.interview.js";
 import { connectDB } from "./model/connect.js";
 import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
 
 
 
@@ -36,20 +37,18 @@ try {
   connectDB();
 
   // CORS configuration
-app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:3001', 
-    // Add your production frontend URL when you deploy
-    'https://your-frontend-domain.com'
-  ],
+const corsOptions = {
+  origin: ['http://localhost:3000'],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization']
+};
 
+app.use(cors(corsOptions));
+app.options('/*any', cors(corsOptions));;// Enable pre-flight for all routes
   app.use(Express.json());
   app.use(Express.urlencoded({ extended: true }));
+  app.use(cookieParser()); 
   
   app.get("/", (req, res) => {
       res.send("checking......");
@@ -57,13 +56,13 @@ app.use(cors({
 
   app.get("/redis-test", async (_, res) => {
     try {
-      console.log("🔧 Testing Redis connection...");
+      // console.log("🔧 Testing Redis connection...");
       await redis.set("server-test", "working", { ex: 60 });
       const value = await redis.get("server-test");
-      console.log("✅ Redis test successful:", value);
+      // console.log("✅ Redis test successful:", value);
       res.json({ redis: value });
     } catch (error: any) {
-      console.error("❌ Redis test failed:", error.message);
+      // console.error("❌ Redis test failed:", error.message);
       res.status(500).json({ error: error.message });
     }
   });
@@ -72,6 +71,7 @@ app.use(cors({
   app.use("/image", img);
   app.use("/api/interview", interviewRouter); 
   app.use("/api/workspace", workspaceRouter);
+
 
   app.listen(5000, () => {
       console.log("✅ Step 7: Server is running on port 5000");

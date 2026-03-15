@@ -39,6 +39,10 @@ export const verifyToken = (req: any, res: Response, next: NextFunction): void =
 
 export const refreshAccessToken = async (req: Request, res: Response):  Promise<void>=> {
   try {
+
+//     console.log("aa rhi hai");
+//     console.log("aa rhi hai");
+// console.log("Cookies:", req.cookies);
     const token = req.cookies?.refreshToken;
     const sessionId = req.cookies?.sessionId;
     if (!token || !sessionId)
@@ -62,19 +66,24 @@ export const refreshAccessToken = async (req: Request, res: Response):  Promise<
     
     res
       .cookie("refreshToken", newRefreshToken, {
-        httpOnly: true,
+         httpOnly: true,
         secure: true,
-        sameSite: "strict",
+        // secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
         maxAge: 10 * 24 * 60 * 60 * 1000,
       })
       .cookie("sessionId", newSessionId, {
         httpOnly: true,
         secure: true,
-        sameSite: "strict",
+        // secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        // sameSite: "strict",
         maxAge: 10 * 24 * 60 * 60 * 1000,
       })
       .json({ accessToken: newAccessToken });
+      console.log("Access token refreshed successfully");
 
+    
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Something went wrong" });

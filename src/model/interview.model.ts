@@ -7,7 +7,7 @@ export interface IInterview extends Document {
   workspaceId: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
   updateAnalytics(): Promise<IInterview>;
-  status: 'draft' | 'in-progress' | 'completed';
+  status: 'pending' | 'in-progress' | 'completed';
   startedAt?: Date;
   completedAt?: Date;
   totalQuestions: number;
@@ -46,8 +46,8 @@ const interviewSchema: Schema = new Schema(
     },
     status: {
       type: String,
-      enum: ['draft', 'in-progress', 'completed'],
-      default: 'draft',
+      enum: ['pending', 'in-progress', 'completed'],
+      default: 'pending',
     },
     startedAt: {
       type: Date,

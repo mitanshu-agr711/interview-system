@@ -39,7 +39,7 @@ export const createInterview = async (req, res) => {
             topic,
             workspaceId,
             createdBy: userId,
-            status: 'draft',
+            status: 'pending',
         });
         await interview.save({ session });
         const questionsToSave = await generateInterviewQuestions(topic);

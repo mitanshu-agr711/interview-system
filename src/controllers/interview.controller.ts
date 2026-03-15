@@ -51,7 +51,7 @@ export const createInterview = async (req: Request, res: Response) :Promise<void
       topic,
       workspaceId,
       createdBy: userId,
-      status: 'draft',
+      status: 'pending',
     });
 
     await interview.save({ session });

@@ -7,8 +7,8 @@ import { v4 as uuidv4 } from 'uuid';
 const accessSecret = process.env.ACCESS_TOKEN_SECRET;
 const refreshSecret = process.env.REFRESH_TOKEN_SECRET;
 const accessTokenExpire = (process.env.ACCESS_TOKEN_EXPIRE || "15m");
-const refreshTokenExpire = (process.env.REFRESH_TOKEN_EXPIRE || '1d');
-const refreshTokenExpireSec = Math.floor((ms(refreshTokenExpire) ?? 86400000) / 1000);
+const refreshTokenExpire = (process.env.REFRESH_TOKEN_EXPIRE || '10d');
+const refreshTokenExpireSec = Math.floor((ms(refreshTokenExpire) ?? 864000000) / 1000);
 export const verifyRefreshToken = async (token) => {
     try {
         const decoded = jwt.verify(token, refreshSecret);

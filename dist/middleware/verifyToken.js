@@ -20,6 +20,9 @@ export const verifyToken = (req, res, next) => {
 };
 export const refreshAccessToken = async (req, res) => {
     try {
+        //     console.log("aa rhi hai");
+        //     console.log("aa rhi hai");
+        // console.log("Cookies:", req.cookies);
         const token = req.cookies?.refreshToken;
         const sessionId = req.cookies?.sessionId;
         if (!token || !sessionId) {
@@ -40,16 +43,20 @@ export const refreshAccessToken = async (req, res) => {
             .cookie("refreshToken", newRefreshToken, {
             httpOnly: true,
             secure: true,
-            sameSite: "strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
+            // secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 10 * 24 * 60 * 60 * 1000,
         })
             .cookie("sessionId", newSessionId, {
             httpOnly: true,
             secure: true,
-            sameSite: "strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
+            // secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            // sameSite: "strict",
+            maxAge: 10 * 24 * 60 * 60 * 1000,
         })
             .json({ accessToken: newAccessToken });
+        console.log("Access token refreshed successfully");
     }
     catch (err) {
         console.error(err);

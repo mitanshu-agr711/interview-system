@@ -1,6 +1,8 @@
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { User } from "../model/user.model.js";
-import { createAccessToken, createRefreshToken } from "../utils/tokengenerator.js";
+import { createAccessToken, createRefreshToken, verifyRefreshToken } from "../utils/tokengenerator.js";
+import { redisClient } from "../utils/redisClient.js";
 import { v4 as uuidv4 } from 'uuid';
 export const register = async (req, res) => {
     try {
@@ -57,20 +59,24 @@ export const login = async (req, res) => {
         const refreshToken = await createRefreshToken(actualUserId, sessionId);
         res
             .status(200)
-            .cookie("refreshToken", refreshToken, {
+            .cookie("refreshToken", refreshToken.token, {
             httpOnly: true,
             secure: true,
-            sameSite: "strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
+            // secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 10 * 24 * 60 * 60 * 1000,
+            path: "/"
         })
             .cookie("sessionId", sessionId, {
             httpOnly: true,
-            secure: true,
-            sameSite: "strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
+            secure: true, //when frontend will deploy
+            // secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 10 * 24 * 60 * 60 * 1000,
+            path: "/"
         })
             .json({
-            user: { id: actualUserId, email: user.email },
+            user: { id: actualUserId, email: user.email, avatar: user.avatar, name: user.name },
             accessToken,
             message: "Login successful"
         });
@@ -80,18 +86,46 @@ export const login = async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 };
-// export const logout = async (req: Request, res: Response) => {
-//   const token = req.cookies.refreshToken;
-//   if (!token) return res.sendStatus(204);
-//   try {
-//     const payload = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET!) as any;
-//     const user = await User.findById(payload.userId);
-//     if (user) {
-//       user.refreshToken = undefined;
-//       await user.save();
-//     }
-//     res.clearCookie("refreshToken").sendStatus(204);
-//   } catch {
-//     res.clearCookie("refreshToken").sendStatus(204);
-//   }
-// };
+export const logout = async (req, res) => {
+    const refreshToken = req.cookies?.refreshToken;
+    const sessionId = req.cookies?.sessionId;
+    const authHeader = req.headers.authorization;
+    const accessToken = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : undefined;
+    let userIdFromAccessToken;
+    if (accessToken) {
+        try {
+            const decoded = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
+            if (typeof decoded.userId === "string") {
+                userIdFromAccessToken = decoded.userId;
+            }
+        }
+        catch {
+            // Ignore invalid/expired access token and continue with refresh-token-based logout.
+        }
+    }
+    try {
+        if (sessionId && userIdFromAccessToken) {
+            await redisClient.del(`refreshToken:${userIdFromAccessToken}:${sessionId}`);
+        }
+        else if (refreshToken) {
+            const payload = await verifyRefreshToken(refreshToken);
+            if (payload) {
+                await redisClient.del(`refreshToken:${payload.userId}:${payload.sessionId}`);
+            }
+        }
+    }
+    catch (error) {
+        console.error("Logout error while deleting Redis token:", error);
+    }
+    const clearCookieOptions = {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        path: "/",
+    };
+    res
+        .clearCookie("refreshToken", clearCookieOptions)
+        .clearCookie("sessionId", clearCookieOptions)
+        .status(200)
+        .json({ message: "Logged out successfully" });
+};

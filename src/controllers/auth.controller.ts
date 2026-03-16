@@ -70,22 +70,23 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const sessionId = uuidv4();
     const accessToken = createAccessToken(actualUserId);
     const refreshToken = await createRefreshToken(actualUserId, sessionId);
+    const isProd = process.env.NODE_ENV === "production";
    
     res
       .status(200)
       .cookie("refreshToken", refreshToken.token, {
         httpOnly: true,
         // secure: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+       secure: isProd,
+    sameSite: isProd ? "none" : "lax",
         maxAge: 10 * 24 * 60 * 60 * 1000,
          path: "/"
       })
       .cookie("sessionId", sessionId, {
         httpOnly: true,
         // secure: true,//when frontend will deploy
-        secure: process.env.NODE_ENV === "production",
-       sameSite: "lax",
+          secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
         maxAge: 10 * 24 * 60 * 60 * 1000,
          path: "/"
       })

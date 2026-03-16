@@ -64,19 +64,22 @@ console.log("Cookies:", req.cookies);
     const { token: newRefreshToken, sessionId: newSessionId } = await createRefreshToken(payload.userId);
 
     
+    const isProd = process.env.NODE_ENV === "production";
+
+
     res
       .cookie("refreshToken", newRefreshToken, {
          httpOnly: true,
         // secure: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+       secure: isProd,
+    sameSite: isProd ? "none" : "lax",
         maxAge: 10 * 24 * 60 * 60 * 1000,
       })
       .cookie("sessionId", newSessionId, {
         httpOnly: true,
         // secure: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+       secure: isProd,
+    sameSite: isProd ? "none" : "lax",
         // sameSite: "strict",
         maxAge: 10 * 24 * 60 * 60 * 1000,
       })

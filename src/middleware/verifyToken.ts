@@ -67,15 +67,15 @@ console.log("Cookies:", req.cookies);
     res
       .cookie("refreshToken", newRefreshToken, {
          httpOnly: true,
-        secure: true,
-        // secure: process.env.NODE_ENV === "production",
+        // secure: true,
+        secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         maxAge: 10 * 24 * 60 * 60 * 1000,
       })
       .cookie("sessionId", newSessionId, {
         httpOnly: true,
-        secure: true,
-        // secure: process.env.NODE_ENV === "production",
+        // secure: true,
+        secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         // sameSite: "strict",
         maxAge: 10 * 24 * 60 * 60 * 1000,

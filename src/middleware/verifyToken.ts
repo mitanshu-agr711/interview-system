@@ -70,17 +70,14 @@ console.log("Cookies:", req.cookies);
     res
       .cookie("refreshToken", newRefreshToken, {
          httpOnly: true,
-        // secure: true,
-       secure: isProd,
-    sameSite: isProd ? "none" : "lax",
+       secure: true,
+        sameSite: "none",
         maxAge: 10 * 24 * 60 * 60 * 1000,
       })
       .cookie("sessionId", newSessionId, {
         httpOnly: true,
-        // secure: true,
-       secure: isProd,
-    sameSite: isProd ? "none" : "lax",
-        // sameSite: "strict",
+        secure: true,
+        sameSite: "none",
         maxAge: 10 * 24 * 60 * 60 * 1000,
       })
       .json({ accessToken: newAccessToken });

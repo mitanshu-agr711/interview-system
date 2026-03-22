@@ -21,8 +21,8 @@ export const verifyToken = (req, res, next) => {
 export const refreshAccessToken = async (req, res) => {
     try {
         //     console.log("aa rhi hai");
-        //     console.log("aa rhi hai");
-        // console.log("Cookies:", req.cookies);
+        console.log("aa rhi hai");
+        console.log("Cookies:", req.cookies);
         const token = req.cookies?.refreshToken;
         const sessionId = req.cookies?.sessionId;
         if (!token || !sessionId) {
@@ -39,20 +39,18 @@ export const refreshAccessToken = async (req, res) => {
         await redisClient.del(`refreshToken:${payload.userId}:${sessionId}`);
         const newAccessToken = createAccessToken(payload.userId);
         const { token: newRefreshToken, sessionId: newSessionId } = await createRefreshToken(payload.userId);
+        const isProd = process.env.NODE_ENV === "production";
         res
             .cookie("refreshToken", newRefreshToken, {
             httpOnly: true,
             secure: true,
-            // secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
+            sameSite: "none",
             maxAge: 10 * 24 * 60 * 60 * 1000,
         })
             .cookie("sessionId", newSessionId, {
             httpOnly: true,
             secure: true,
-            // secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            // sameSite: "strict",
+            sameSite: "none",
             maxAge: 10 * 24 * 60 * 60 * 1000,
         })
             .json({ accessToken: newAccessToken });

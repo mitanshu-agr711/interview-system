@@ -57,21 +57,20 @@ export const login = async (req, res) => {
         const sessionId = uuidv4();
         const accessToken = createAccessToken(actualUserId);
         const refreshToken = await createRefreshToken(actualUserId, sessionId);
+        const isProd = process.env.NODE_ENV === "production";
         res
             .status(200)
             .cookie("refreshToken", refreshToken.token, {
             httpOnly: true,
             secure: true,
-            // secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
+            sameSite: "none",
             maxAge: 10 * 24 * 60 * 60 * 1000,
             path: "/"
         })
             .cookie("sessionId", sessionId, {
             httpOnly: true,
-            secure: true, //when frontend will deploy
-            // secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
+            secure: true,
+            sameSite: "none",
             maxAge: 10 * 24 * 60 * 60 * 1000,
             path: "/"
         })

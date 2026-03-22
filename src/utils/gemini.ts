@@ -11,6 +11,74 @@ if (!apiKey) {
 
 const groq = new Groq({ apiKey });
 
+type InterviewQuestion = {
+  question: string;
+  correctAnswer: string;
+};
+
+const cleanJsonText = (text: string): string =>
+  text.replace(/```json|```/g, "").trim();
+
+const tryParseJson = (text: string): unknown => {
+  try {
+    return JSON.parse(cleanJsonText(text));
+  } catch {
+    return null;
+  }
+};
+
+const normalizeQuestions = (candidate: unknown): InterviewQuestion[] => {
+  if (!Array.isArray(candidate)) {
+    return [];
+  }
+
+  return candidate
+    .map((item: any) => {
+      const question = typeof item?.question === "string" ? item.question.trim() : "";
+      const correctAnswer =
+        typeof item?.correctAnswer === "string"
+          ? item.correctAnswer.trim()
+          : typeof item?.answer === "string"
+            ? item.answer.trim()
+            : "";
+
+      if (!question || !correctAnswer) {
+        return null;
+      }
+
+      return { question, correctAnswer };
+    })
+    .filter((q: InterviewQuestion | null): q is InterviewQuestion => q !== null);
+};
+
+const extractQuestions = (parsed: any): InterviewQuestion[] => {
+  const direct = normalizeQuestions(parsed);
+  if (direct.length > 0) {
+    return direct;
+  }
+
+  const list =
+    parsed?.questions ??
+    parsed?.data ??
+    parsed?.items ??
+    parsed?.interviewQuestions;
+
+  const nested = normalizeQuestions(list);
+  if (nested.length > 0) {
+    return nested;
+  }
+
+  if (typeof list === "string") {
+    const reparsed = tryParseJson(list);
+    const stringQuestions = normalizeQuestions(reparsed);
+    if (stringQuestions.length > 0) {
+      return stringQuestions;
+    }
+  }
+
+  return [];
+};
+
 // No rate limiting needed - Groq is very generous
 async function generateWithGroq(prompt: string): Promise<string> {
   const response = await groq.chat.completions.create({
@@ -25,7 +93,7 @@ async function generateWithGroq(prompt: string): Promise<string> {
       }
     ],
      model: "llama-3.3-70b-versatile", 
-    temperature: 1,
+    temperature: 0.2,
     max_tokens: 8192,
     response_format: { type: "json_object" }
   });
@@ -76,36 +144,31 @@ export const generateInterviewQuestions = async (
     const prompt = `
 Generate exactly ${count} interview questions on the topic "${topic}".
 
-Return ONLY a JSON array in this exact format.
+Return ONLY a JSON object in this exact format.
 Do NOT add any explanation or extra text.
 
-[
-  {
-    "question": "question text here",
-    "correctAnswer": "detailed correct answer here"
-  }
-]
+{
+  "questions": [
+    {
+      "question": "question text here",
+      "correctAnswer": "detailed correct answer here"
+    }
+  ]
+}
 `;
 
     let text = await generateWithGroq(prompt);
 
-   
-    text = text.replace(/```json|```/g, "").trim();
+    const parsed = tryParseJson(text);
+    if (!parsed) {
+      throw new Error("Invalid JSON returned by Groq");
+    }
 
-    const parsed = JSON.parse(text);
-
- 
-    const questions = Array.isArray(parsed)
-      ? parsed
-      : Array.isArray(parsed?.questions)
-        ? parsed.questions
-        : null;
-
-    if (!questions) {
+    const questions = extractQuestions(parsed);
+    if (questions.length === 0) {
       throw new Error("Invalid AI response format");
     }
 
-   
     return questions.slice(0, count);
 
   } catch (error) {

@@ -14,25 +14,18 @@ const router = Router();
 
 router.use(verifyToken);
 
-/**
- * INTERVIEW ROUTES
- */
-
-
 router.post('/create', createInterview);
 
-
 router.post('/:interviewId/start', startInterview);
-
 
 router.post('/submit-answer', submitAnswer);  
 
 router.post('/:interviewId/complete', completeInterview);
 
-router.get('/:interviewId', getInterviewDetails);
-
 router.get('/workspace/:workspaceId', getWorkspaceInterviews);
 
 router.get('/analytics/user', getUserAnalytics);
+
+router.get('/:interviewId', getInterviewDetails);
 
 export default router;

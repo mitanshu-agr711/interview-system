@@ -39,8 +39,6 @@ export const verifyToken = (req: any, res: Response, next: NextFunction): void =
 
 export const refreshAccessToken = async (req: Request, res: Response):  Promise<void>=> {
   try {
-
-//     console.log("aa rhi hai");
     console.log("aa rhi hai");
 console.log("Cookies:", req.cookies);
     const token = req.cookies?.refreshToken;

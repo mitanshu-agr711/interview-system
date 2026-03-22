@@ -1,20 +1,25 @@
 import mongoose, { Schema } from 'mongoose';
 const answerSchema = new Schema({
-    interviewId: {
+    attemptId: {
         type: Schema.Types.ObjectId,
-        ref: 'Interview',
+        ref: 'InterviewAttempt',
         required: true,
     },
+    // interviewId: {
+    //   type: Schema.Types.ObjectId,
+    //   ref: 'Interview',
+    //   required: true,
+    // }, 
     questionId: {
         type: Schema.Types.ObjectId,
         ref: 'Question',
         required: true,
     },
-    answeredBy: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
-        required: true,
-    },
+    // answeredBy: {
+    //   type: Schema.Types.ObjectId,
+    //   ref: 'User',
+    //   required: true,
+    // },
     userAnswer: {
         type: String,
         required: true,
@@ -43,8 +48,11 @@ const answerSchema = new Schema({
     timestamps: true,
 });
 // Indexes for faster queries
-answerSchema.index({ interviewId: 1 });
-answerSchema.index({ questionId: 1 });
-answerSchema.index({ answeredBy: 1 });
-answerSchema.index({ interviewId: 1, answeredBy: 1 });
+// answerSchema.index({ interviewId: 1 });
+// answerSchema.index({ questionId: 1 });
+// answerSchema.index({ answeredBy: 1 });
+// answerSchema.index({ interviewId: 1, answeredBy: 1 });
+answerSchema.index({ attemptId: 1 });
+answerSchema.index({ attemptId: 1, questionId: 1 }, { unique: true });
+// answerSchema.index({ answeredBy: 1 });
 export const Answer = mongoose.model('Answer', answerSchema);

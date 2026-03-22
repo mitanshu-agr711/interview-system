@@ -2,9 +2,71 @@ import { Request, Response } from 'express';
 import { Interview } from '../model/interview.model.js';
 import { Question } from '../model/question.model.js';
 import { Answer } from '../model/answer.model.js';
+import { InterviewAttempt } from '../model/interviewattempt.js';
 import { Workspace } from '../model/workspace.model.js';
 import { evaluateAnswer, generateInterviewQuestions } from '../utils/gemini.js';
 import mongoose from 'mongoose';
+
+const canAccessInterview = async (interviewId: string, userId: string) => {
+  const interview = await Interview.findById(interviewId)
+    .populate('workspaceId', 'createdBy isShared')
+    .exec();
+
+  if (!interview) {
+    return { interview: null, allowed: false };
+  }
+
+  const workspace = interview.workspaceId as unknown as {
+    createdBy: mongoose.Types.ObjectId;
+    isShared?: boolean;
+  };
+
+  const isOwner = String(workspace.createdBy) === userId;
+  const isShared = Boolean(workspace.isShared);
+
+  return { interview, allowed: isOwner || isShared };
+};
+
+const updateAttemptAnalytics = async (
+  attempt: any,
+  totalQuestions: number
+) => {
+  const [stats] = await Answer.aggregate([
+    {
+      $match: {
+        attemptId: new mongoose.Types.ObjectId(String(attempt._id)),
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        answeredQuestions: { $sum: 1 },
+        correctAnswers: {
+          $sum: {
+            $cond: [{ $eq: ['$isCorrect', true] }, 1, 0],
+          },
+        },
+      },
+    },
+  ]);
+
+  const answeredQuestions = stats?.answeredQuestions ?? 0;
+  const correctAnswers = stats?.correctAnswers ?? 0;
+  const wrongAnswers = Math.max(answeredQuestions - correctAnswers, 0);
+  const scorePercentage = totalQuestions > 0
+    ? Math.round((correctAnswers / totalQuestions) * 100)
+    : 0;
+
+  attempt.totalQuestions = totalQuestions;
+  attempt.answeredQuestions = answeredQuestions;
+  attempt.correctAnswers = correctAnswers;
+  attempt.wrongAnswers = wrongAnswers;
+  attempt.scorePercentage = scorePercentage;
+
+  await attempt.save();
+
+  return attempt;
+};
 
 
 /* Creates a new interview in a workspace
@@ -51,7 +113,6 @@ export const createInterview = async (req: Request, res: Response) :Promise<void
       topic,
       workspaceId,
       createdBy: userId,
-      status: 'pending',
     });
 
     await interview.save({ session });
@@ -66,11 +127,13 @@ export const createInterview = async (req: Request, res: Response) :Promise<void
         question: q.question,
         correctAnswer: q.correctAnswer,
         interviewId: interview._id,
-        workspaceId,
         createdBy: userId,
       })),
       { session }
     );
+
+    interview.totalQuestions = savedQuestions.length;
+    await interview.save({ session });
 
     
     workspace.Interviews.push(interview._id as mongoose.Types.ObjectId);
@@ -84,7 +147,7 @@ export const createInterview = async (req: Request, res: Response) :Promise<void
         id: interview._id,
         title: interview.title,
         topic: interview.topic,
-        status: interview.status,
+        status: 'not-started',
         totalQuestions: savedQuestions.length,
       },
       questions: savedQuestions.map(q => ({
@@ -116,19 +179,35 @@ export const startInterview = async (req: Request, res: Response) :Promise<void>
       return;
     }
 
-    const interview = await Interview.findOne({ 
-      _id: interviewId, 
-      createdBy: userId 
-    });
+    if (!mongoose.isValidObjectId(interviewId)) {
+      res.status(400).json({ error: 'Invalid interviewId' });
+      return;
+    }
 
-    if (!interview) {
+    const access = await canAccessInterview(interviewId, userId);
+    if (!access.interview) {
       res.status(404).json({ error: 'Interview not found' });
       return;
     }
 
-    interview.status = 'in-progress';
-    interview.startedAt = new Date();
-    await interview.save();
+    if (!access.allowed) {
+      res.status(403).json({ error: 'Access denied for this interview' });
+      return;
+    }
+
+    const interview = access.interview;
+
+    const attempt = await InterviewAttempt.findOneAndUpdate(
+      { interviewId, userId },
+      {
+        $set: { status: 'in-progress' },
+        $setOnInsert: {
+          startedAt: new Date(),
+          totalQuestions: interview.totalQuestions,
+        },
+      },
+      { upsert: true, new: true }
+    );
 
     
     const questions = await Question.find({ interviewId }).select('-correctAnswer');
@@ -137,10 +216,11 @@ export const startInterview = async (req: Request, res: Response) :Promise<void>
       success: true,
       interview: {
         id: interview._id,
+        attemptId: attempt._id,
         title: interview.title,
         topic: interview.topic,
-        status: interview.status,
-        startedAt: interview.startedAt,
+        status: attempt.status,
+        startedAt: attempt.startedAt,
       },
       questions,
     });
@@ -172,13 +252,37 @@ export const submitAnswer = async (req: Request, res: Response) :Promise<void>=>
       return;
     }
 
-    const interview = await Interview.findOne({ 
-      _id: interviewId, 
-      createdBy: userId 
-    });
+    if (!mongoose.isValidObjectId(interviewId) || !mongoose.isValidObjectId(questionId)) {
+      res.status(400).json({ error: 'Invalid interviewId or questionId' });
+      return;
+    }
 
-    if (!interview) {
+    const access = await canAccessInterview(interviewId, userId);
+    if (!access.interview) {
       res.status(404).json({ error: 'Interview not found' });
+      return;
+    }
+
+    if (!access.allowed) {
+      res.status(403).json({ error: 'Access denied for this interview' });
+      return;
+    }
+
+    const interview = access.interview;
+
+    let attempt = await InterviewAttempt.findOne({ interviewId, userId });
+    if (!attempt) {
+      attempt = await InterviewAttempt.create({
+        interviewId,
+        userId,
+        status: 'in-progress',
+        startedAt: new Date(),
+        totalQuestions: interview.totalQuestions,
+      });
+    }
+
+    if (attempt.status === 'completed') {
+      res.status(400).json({ error: 'Interview attempt already completed' });
       return;
     }
 
@@ -194,9 +298,8 @@ export const submitAnswer = async (req: Request, res: Response) :Promise<void>=>
     }
 
     const existingAnswer = await Answer.findOne({ 
-      interviewId, 
+      attemptId: attempt._id,
       questionId, 
-      answeredBy: userId 
     });
 
     if (existingAnswer) {
@@ -211,9 +314,8 @@ export const submitAnswer = async (req: Request, res: Response) :Promise<void>=>
     );
 
     const answer = new Answer({
-      interviewId,
+      attemptId: attempt._id,
       questionId,
-      answeredBy: userId,
       userAnswer,
       isCorrect: evaluation.is_correct,
       shortReason: evaluation.short_reason,
@@ -224,7 +326,7 @@ export const submitAnswer = async (req: Request, res: Response) :Promise<void>=>
     await answer.save();
 
 
-    await interview.updateAnalytics();
+    await updateAttemptAnalytics(attempt, interview.totalQuestions);
 
      res.status(200).json({
       success: true,
@@ -232,6 +334,13 @@ export const submitAnswer = async (req: Request, res: Response) :Promise<void>=>
       explanation: evaluation.short_reason,
       correctAnswer: evaluation.corrected_answer,
       answerId: answer._id,
+      analytics: {
+        totalQuestions: attempt.totalQuestions,
+        answeredQuestions: attempt.answeredQuestions,
+        correctAnswers: attempt.correctAnswers,
+        wrongAnswers: attempt.wrongAnswers,
+        scorePercentage: attempt.scorePercentage,
+      },
     });
     return;
   } catch (error) {
@@ -254,29 +363,42 @@ export const completeInterview = async (req: Request, res: Response) :Promise<vo
       return;
     }
 
-    const interview = await Interview.findOne({ 
-      _id: interviewId, 
-      createdBy: userId 
-    });
+    if (!mongoose.isValidObjectId(interviewId)) {
+      res.status(400).json({ error: 'Invalid interviewId' });
+      return;
+    }
 
-    if (!interview) {
+    const access = await canAccessInterview(interviewId, userId);
+    if (!access.interview) {
        res.status(404).json({ error: 'Interview not found' });
         return;
     }
 
-    interview.status = 'completed';
-    interview.completedAt = new Date();
-    await interview.updateAnalytics();
+    if (!access.allowed) {
+      res.status(403).json({ error: 'Access denied for this interview' });
+      return;
+    }
+
+    const attempt = await InterviewAttempt.findOne({ interviewId, userId });
+
+    if (!attempt) {
+      res.status(404).json({ error: 'Interview attempt not found. Start interview first.' });
+      return;
+    }
+
+    attempt.status = 'completed';
+    attempt.completedAt = new Date();
+    await updateAttemptAnalytics(attempt, access.interview.totalQuestions);
 
      res.status(200).json({
       success: true,
       message: 'Interview completed successfully',
       analytics: {
-        totalQuestions: interview.totalQuestions,
-        answeredQuestions: interview.answeredQuestions,
-        correctAnswers: interview.correctAnswers,
-        wrongAnswers: interview.wrongAnswers,
-        scorePercentage: interview.scorePercentage,
+        totalQuestions: attempt.totalQuestions,
+        answeredQuestions: attempt.answeredQuestions,
+        correctAnswers: attempt.correctAnswers,
+        wrongAnswers: attempt.wrongAnswers,
+        scorePercentage: attempt.scorePercentage,
       },
     });
     return;
@@ -301,10 +423,23 @@ export const getInterviewDetails = async (req: Request, res: Response) :Promise<
     }
 
 
-    const interview = await Interview.findOne({ 
-      _id: interviewId, 
-      createdBy: userId 
-    })
+    if (!mongoose.isValidObjectId(interviewId)) {
+      res.status(400).json({ error: 'Invalid interviewId' });
+      return;
+    }
+
+    const access = await canAccessInterview(interviewId, userId);
+    if (!access.interview) {
+      res.status(404).json({ error: 'Interview not found' });
+      return;
+    }
+
+    if (!access.allowed) {
+      res.status(403).json({ error: 'Access denied for this interview' });
+      return;
+    }
+
+    const interview = await Interview.findById(interviewId)
     .populate('workspaceId', 'title')
     .populate('createdBy', 'name email username')
     .lean();
@@ -315,20 +450,24 @@ export const getInterviewDetails = async (req: Request, res: Response) :Promise<
     }
 
   
+      const attempt = await InterviewAttempt.findOne({ interviewId, userId }).lean();
+
     const questions = await Question.find({ interviewId })
       .select('question correctAnswer topic')
       .lean();
 
 
-    const answers = await Answer.find({ interviewId, answeredBy: userId })
-      .populate('questionId', 'question')
-      .lean();
+      const answers = attempt
+        ? await Answer.find({ attemptId: attempt._id }).lean()
+        : [];
+
+      const answerMap = new Map(
+        answers.map((answer: any) => [String(answer.questionId), answer])
+      );
 
     // Combine questions with answers
-    const questionsWithAnswers = questions.map(question => {
-      const answer = answers.find(
-        a => a.questionId._id.toString() === question._id.toString()
-      );
+      const questionsWithAnswers = questions.map((question: any) => {
+        const answer = answerMap.get(String(question._id));
 
       return {
         questionId: question._id,
@@ -351,23 +490,26 @@ export const getInterviewDetails = async (req: Request, res: Response) :Promise<
       success: true,
       interview: {
         id: interview._id,
+        attemptId: attempt?._id || null,
         title: interview.title,
         description: interview.description,
         topic: interview.topic,
-        status: interview.status,
+        status: attempt?.status || 'not-started',
         workspace: interview.workspaceId,
         createdBy: interview.createdBy,
-        startedAt: interview.startedAt,
-        completedAt: interview.completedAt,
+        startedAt: attempt?.startedAt || null,
+        completedAt: attempt?.completedAt || null,
         createdAt: (interview as any).createdAt,
       },
       analytics: {
-        totalQuestions: interview.totalQuestions,
-        answeredQuestions: interview.answeredQuestions,
-        correctAnswers: interview.correctAnswers,
-        wrongAnswers: interview.wrongAnswers,
-        unansweredQuestions: interview.totalQuestions - interview.answeredQuestions,
-        scorePercentage: interview.scorePercentage,
+        totalQuestions: attempt?.totalQuestions ?? interview.totalQuestions,
+        answeredQuestions: attempt?.answeredQuestions ?? 0,
+        correctAnswers: attempt?.correctAnswers ?? 0,
+        wrongAnswers: attempt?.wrongAnswers ?? 0,
+        unansweredQuestions:
+          (attempt?.totalQuestions ?? interview.totalQuestions) -
+          (attempt?.answeredQuestions ?? 0),
+        scorePercentage: attempt?.scorePercentage ?? 0,
       },
       questionsWithAnswers,
       weakTopics,
@@ -437,42 +579,71 @@ export const getUserAnalytics = async (req: Request, res: Response) :Promise<voi
       return;
     }
 
-   
-    const interviews = await Interview.find({ createdBy: userId });
+    const attempts = await InterviewAttempt.find({ userId })
+      .populate('interviewId', 'title topic createdAt')
+      .sort({ createdAt: -1 })
+      .lean();
 
-    const totalInterviews = interviews.length;
-    const completedInterviews = interviews.filter(i => i.status === 'completed').length;
-    const inProgressInterviews = interviews.filter(i => i.status === 'in-progress').length;
-    
-    const totalQuestions = interviews.reduce((sum, i) => sum + i.totalQuestions, 0);
-    const totalAnswered = interviews.reduce((sum, i) => sum + i.answeredQuestions, 0);
-    const totalCorrect = interviews.reduce((sum, i) => sum + i.correctAnswers, 0);
-    const totalWrong = interviews.reduce((sum, i) => sum + i.wrongAnswers, 0);
+    const totalInterviews = attempts.length;
+    const completedInterviews = attempts.filter(i => i.status === 'completed').length;
+    const inProgressInterviews = attempts.filter(i => i.status === 'in-progress').length;
+
+    const totalQuestions = attempts.reduce((sum, i: any) => sum + (i.totalQuestions || 0), 0);
+    const totalAnswered = attempts.reduce((sum, i: any) => sum + (i.answeredQuestions || 0), 0);
+    const totalCorrect = attempts.reduce((sum, i: any) => sum + (i.correctAnswers || 0), 0);
+    const totalWrong = attempts.reduce((sum, i: any) => sum + (i.wrongAnswers || 0), 0);
     
     const overallScore = totalQuestions > 0 
       ? Math.round((totalCorrect / totalQuestions) * 100) 
       : 0;
 
-    const topicStats = await Interview.aggregate([
-      { $match: { createdBy: userId } },
-      {
-        $group: {
-          _id: '$topic',
-          totalInterviews: { $sum: 1 },
-          avgScore: { $avg: '$scorePercentage' },
-          totalCorrect: { $sum: '$correctAnswers' },
-          totalWrong: { $sum: '$wrongAnswers' },
-        },
-      },
-      { $sort: { avgScore: -1 } },
-    ]);
+    const topicAccumulator = new Map<string, {
+      totalInterviews: number;
+      scoreSum: number;
+      totalCorrect: number;
+      totalWrong: number;
+    }>();
+
+    for (const attempt of attempts as any[]) {
+      const topic = attempt.interviewId?.topic || 'Unknown';
+      const current = topicAccumulator.get(topic) || {
+        totalInterviews: 0,
+        scoreSum: 0,
+        totalCorrect: 0,
+        totalWrong: 0,
+      };
+
+      current.totalInterviews += 1;
+      current.scoreSum += attempt.scorePercentage || 0;
+      current.totalCorrect += attempt.correctAnswers || 0;
+      current.totalWrong += attempt.wrongAnswers || 0;
+
+      topicAccumulator.set(topic, current);
+    }
+
+    const topicStats = Array.from(topicAccumulator.entries())
+      .map(([topic, stats]) => ({
+        _id: topic,
+        totalInterviews: stats.totalInterviews,
+        avgScore:
+          stats.totalInterviews > 0
+            ? Math.round((stats.scoreSum / stats.totalInterviews) * 100) / 100
+            : 0,
+        totalCorrect: stats.totalCorrect,
+        totalWrong: stats.totalWrong,
+      }))
+      .sort((a, b) => b.avgScore - a.avgScore);
 
   
-    const recentInterviews = await Interview.find({ createdBy: userId })
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .select('title topic scorePercentage status createdAt')
-      .lean();
+    const recentInterviews = (attempts as any[])
+      .slice(0, 5)
+      .map((attempt) => ({
+        title: attempt.interviewId?.title || 'Untitled Interview',
+        topic: attempt.interviewId?.topic || 'Unknown',
+        scorePercentage: attempt.scorePercentage || 0,
+        status: attempt.status,
+        createdAt: attempt.createdAt,
+      }));
 
     res.status(200).json({
       success: true,

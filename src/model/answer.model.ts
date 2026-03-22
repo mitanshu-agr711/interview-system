@@ -1,9 +1,8 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IAnswer extends Document {
-  interviewId: mongoose.Types.ObjectId;
+  attemptId: mongoose.Types.ObjectId;
   questionId: mongoose.Types.ObjectId;
-  answeredBy: mongoose.Types.ObjectId;
   userAnswer: string;
   isCorrect: boolean;
   shortReason: string;
@@ -13,19 +12,14 @@ export interface IAnswer extends Document {
 
 const answerSchema: Schema = new Schema(
   {
-    interviewId: {
+     attemptId: {
       type: Schema.Types.ObjectId,
-      ref: 'Interview',
+      ref: 'InterviewAttempt',
       required: true,
-    },
+    }, 
     questionId: {
       type: Schema.Types.ObjectId,
       ref: 'Question',
-      required: true,
-    },
-    answeredBy: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
       required: true,
     },
     userAnswer: {
@@ -58,10 +52,14 @@ const answerSchema: Schema = new Schema(
   }
 );
 
-// Indexes for faster queries
-answerSchema.index({ interviewId: 1 });
-answerSchema.index({ questionId: 1 });
-answerSchema.index({ answeredBy: 1 });
-answerSchema.index({ interviewId: 1, answeredBy: 1 });
+
+answerSchema.index({ attemptId: 1 });
+answerSchema.index(
+  { attemptId: 1, questionId: 1 },
+  { unique: true }
+);
+
+;
+
 
 export const Answer = mongoose.model<IAnswer>('Answer', answerSchema);

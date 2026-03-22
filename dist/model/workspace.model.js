@@ -8,7 +8,19 @@ const WorkspaceSchema = new Schema({
     },
     Interviews: [{ type: Schema.Types.ObjectId, ref: "Interview" }],
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    // 🔥 ADD THIS
+    isShared: {
+        type: Boolean,
+        default: false,
+    },
+    shareToken: {
+        type: String,
+        default: null,
+    },
 }, {
     timestamps: true,
 });
+// indexes
+WorkspaceSchema.index({ createdBy: 1 });
+WorkspaceSchema.index({ shareToken: 1 });
 export const Workspace = mongoose.model("Workspace", WorkspaceSchema);

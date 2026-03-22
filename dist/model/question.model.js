@@ -20,11 +20,11 @@ const questionSchema = new Schema({
         ref: 'Interview',
         required: true,
     },
-    workspaceId: {
-        type: Schema.Types.ObjectId,
-        ref: 'Workspace',
-        required: true,
-    },
+    // workspaceId: {
+    //   type: Schema.Types.ObjectId,
+    //   ref: 'Workspace',
+    //   required: true,
+    // },
     createdBy: {
         type: Schema.Types.ObjectId,
         ref: 'User',
@@ -33,8 +33,9 @@ const questionSchema = new Schema({
 }, {
     timestamps: true,
 });
-// Indexes for faster queries
 questionSchema.index({ interviewId: 1 });
-questionSchema.index({ workspaceId: 1 });
-questionSchema.index({ createdBy: 1 });
+// Indexes for faster queries
+// questionSchema.index({ interviewId: 1 });
+// questionSchema.index({ workspaceId: 1 });
+// questionSchema.index({ createdBy: 1 });
 export const Question = mongoose.model('Question', questionSchema);

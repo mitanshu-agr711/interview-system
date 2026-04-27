@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IInterviewAttempt extends Document {
   userId: mongoose.Types.ObjectId;
   interviewId: mongoose.Types.ObjectId;
+  attemptId: string;
 
   status: "in-progress" | "completed";
 
@@ -18,6 +19,11 @@ export interface IInterviewAttempt extends Document {
 
 const InterviewAttemptSchema: Schema = new Schema(
   {
+    attemptId: {
+      type: String,
+      required: true,
+      unique: true,
+    },
     userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -62,9 +68,9 @@ const InterviewAttemptSchema: Schema = new Schema(
   { timestamps: true }
 );
 
-InterviewAttemptSchema.index({ userId: 1 });
-InterviewAttemptSchema.index({ interviewId: 1 });
-InterviewAttemptSchema.index({ userId: 1, interviewId: 1 });
+
+// Prevent duplicate in-progress attempts per user/interview
+InterviewAttemptSchema.index({ userId: 1, interviewId: 1, status: 1 }, { unique: true, partialFilterExpression: { status: 'in-progress' } });
 
 export const InterviewAttempt = mongoose.model<IInterviewAttempt>(
   "InterviewAttempt",

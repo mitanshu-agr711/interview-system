@@ -16,16 +16,16 @@ router.use(verifyToken);
 
 router.post('/create', createInterview);
 
-router.post('/:interviewId/start', startInterview);
+router.post('/submit-answer', submitAnswer);
 
-router.post('/submit-answer', submitAnswer);  
+router.post('/:interviewId/start', startInterview);
 
 router.post('/:interviewId/complete', completeInterview);
 
-router.get('/workspace/:workspaceId', getWorkspaceInterviews);
-
 router.get('/analytics/user', getUserAnalytics);
 
-router.get('/:interviewId', getInterviewDetails);
+router.get('/workspace/:workspaceId', getWorkspaceInterviews);
+
+router.get('/details/:attemptId', getInterviewDetails);
 
 export default router;

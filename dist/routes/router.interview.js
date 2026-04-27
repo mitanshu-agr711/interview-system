@@ -3,9 +3,6 @@ import { createInterview, startInterview, submitAnswer, completeInterview, getIn
 import { verifyToken } from '../middleware/verifyToken.js';
 const router = Router();
 router.use(verifyToken);
-/**
- * INTERVIEW ROUTES
- */
 router.post('/create', createInterview);
 router.post('/:interviewId/start', startInterview);
 router.post('/submit-answer', submitAnswer);

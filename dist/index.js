@@ -8,23 +8,22 @@ import interviewRouter from "./routes/router.interview.js";
 import { connectDB } from "./model/connect.js";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
-console.log("🔧 Step 1: Loading .env file...");
 dotenv.config();
-console.log("✅ Step 2: .env loaded");
-console.log("🔍 Step 3: Checking environment variables:");
-console.log("   - MONGO_URL exists:", !!process.env.MONGO_URL);
-console.log("   - UPSTASH_REDIS_REST_URL:", process.env.UPSTASH_REDIS_REST_URL);
-console.log("   - UPSTASH_REDIS_REST_TOKEN length:", process.env.UPSTASH_REDIS_REST_TOKEN?.length);
-console.log("   - UPSTASH_REDIS_REST_TOKEN preview:", process.env.UPSTASH_REDIS_REST_TOKEN?.substring(0, 30) + "...");
-console.log("🔧 Step 4: Creating Redis client...");
+// console.log("✅ Step 2: .env loaded");
+// console.log("🔍 Step 3: Checking environment variables:");
+// console.log("   - MONGO_URL exists:", !!process.env.MONGO_URL);
+// console.log("   - UPSTASH_REDIS_REST_URL:", process.env.UPSTASH_REDIS_REST_URL);
+// console.log("   - UPSTASH_REDIS_REST_TOKEN length:", process.env.UPSTASH_REDIS_REST_TOKEN?.length);
+// console.log("   - UPSTASH_REDIS_REST_TOKEN preview:", process.env.UPSTASH_REDIS_REST_TOKEN?.substring(0, 30) + "...");
+// console.log("🔧 Step 4: Creating Redis client...");
 try {
     const redis = new Redis({
         url: process.env.UPSTASH_REDIS_REST_URL,
         token: process.env.UPSTASH_REDIS_REST_TOKEN,
     });
-    console.log("✅ Step 5: Redis client created successfully");
+    // console.log("✅ Step 5: Redis client created successfully");
     const app = Express();
-    console.log("🔧 Step 6: Connecting to MongoDB...");
+    // console.log("🔧 Step 6: Connecting to MongoDB...");
     connectDB();
     // CORS configuration
     const corsOptions = {

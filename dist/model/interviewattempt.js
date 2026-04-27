@@ -38,7 +38,6 @@ const InterviewAttemptSchema = new Schema({
         default: 0,
     },
 }, { timestamps: true });
-// indexes
 InterviewAttemptSchema.index({ userId: 1 });
 InterviewAttemptSchema.index({ interviewId: 1 });
 InterviewAttemptSchema.index({ userId: 1, interviewId: 1 });

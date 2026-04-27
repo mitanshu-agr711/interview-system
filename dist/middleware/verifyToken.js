@@ -20,7 +20,6 @@ export const verifyToken = (req, res, next) => {
 };
 export const refreshAccessToken = async (req, res) => {
     try {
-        //     console.log("aa rhi hai");
         console.log("aa rhi hai");
         console.log("Cookies:", req.cookies);
         const token = req.cookies?.refreshToken;

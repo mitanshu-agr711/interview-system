@@ -510,6 +510,76 @@ export const getInterviewDetails = async (req: Request, res: Response) => {
   });
 };
 
+
+/*
+ Get analytics status for all user interviews
+ */
+
+ export const getWorkspaceInterviewStatusAgg = async (
+  workspaceId: string,
+  userId: string
+) => {
+  return await Interview.aggregate([
+    {
+      $match: {
+        workspaceId: new mongoose.Types.ObjectId(workspaceId),
+      },
+    },
+    {
+      $lookup: {
+        from: "interviewattempts",
+        let: { interviewId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$interviewId", "$$interviewId"] },
+                  {
+                    $eq: [
+                      "$userId",
+                      new mongoose.Types.ObjectId(userId),
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+        ],
+        as: "attempt",
+      },
+    },
+    {
+      $addFields: {
+        attempt: { $arrayElemAt: ["$attempt", 0] },
+      },
+    },
+    {
+      $project: {
+        title: 1,
+        topic: 1,
+        totalQuestions: 1,
+
+        status: {
+          $ifNull: ["$attempt.status", "not-started"],
+        },
+        scorePercentage: {
+          $ifNull: ["$attempt.scorePercentage", 0],
+        },
+        correctAnswers: {
+          $ifNull: ["$attempt.correctAnswers", 0],
+        },
+        wrongAnswers: {
+          $ifNull: ["$attempt.wrongAnswers", 0],
+        },
+        answeredQuestions: {
+          $ifNull: ["$attempt.answeredQuestions", 0],
+        },
+      },
+    },
+  ]);
+};
+
 /*
   Fetch all interviews in a workspace
  */
@@ -522,8 +592,7 @@ export const getWorkspaceInterviews = async (req: Request, res: Response) :Promi
      res.status(401).json({ error: 'User not authenticated' });
      return;
     }
-
-   
+  
     const workspace = await Workspace.findOne({ 
       _id: workspaceId, 
       createdBy: userId 
@@ -539,6 +608,11 @@ export const getWorkspaceInterviews = async (req: Request, res: Response) :Promi
       return;
     }
 
+     const data = await getWorkspaceInterviewStatusAgg(
+      workspaceId,
+      userId
+    );
+
      res.status(200).json({
       success: true,
       workspace: {
@@ -546,6 +620,7 @@ export const getWorkspaceInterviews = async (req: Request, res: Response) :Promi
         title: workspace.title,
       },
       interviews: workspace.Interviews,
+      interviewStatus: data,
     });
     return;
   } catch (error) {
@@ -656,3 +731,4 @@ export const getUserAnalytics = async (req: Request, res: Response) :Promise<voi
      return;
   }
 };
+

@@ -139,9 +139,10 @@ export const forgetPassword = async (req, res) => {
             return;
         }
         const user = await User.findOne({ email });
+        console.log(user);
         if (!user) {
             // Avoid revealing if an email is registered.
-            res.status(200).json({ message: "If this email exists, a reset link has been sent" });
+            res.status(200).json({ message: "user not found" });
             return;
         }
         const rawToken = crypto.randomBytes(32).toString("hex");
@@ -152,7 +153,7 @@ export const forgetPassword = async (req, res) => {
         const clientBaseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
         const resetLink = `${clientBaseUrl}/reset-password?token=${rawToken}&id=${user._id.toString()}`;
         await sendResetPasswordEmail(user.email, user.name, resetLink);
-        res.status(200).json({ message: "If this email exists, a reset link has been sent" });
+        res.status(200).json({ message: "a reset link has been sent" });
         return;
     }
     catch (error) {
@@ -168,6 +169,7 @@ export const resetPassword = async (req, res) => {
             res.status(400).json({ message: "token, userId, password and confirmPassword are required" });
             return;
         }
+        console.log("Reset password request received for userId:", userId);
         if (password !== confirmPassword) {
             res.status(400).json({ message: "Password and confirm password do not match" });
             return;

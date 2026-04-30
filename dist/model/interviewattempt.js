@@ -1,5 +1,10 @@
 import mongoose, { Schema } from "mongoose";
 const InterviewAttemptSchema = new Schema({
+    attemptId: {
+        type: String,
+        required: true,
+        unique: true,
+    },
     userId: {
         type: Schema.Types.ObjectId,
         ref: "User",
@@ -38,7 +43,6 @@ const InterviewAttemptSchema = new Schema({
         default: 0,
     },
 }, { timestamps: true });
-InterviewAttemptSchema.index({ userId: 1 });
-InterviewAttemptSchema.index({ interviewId: 1 });
-InterviewAttemptSchema.index({ userId: 1, interviewId: 1 });
+// Prevent duplicate in-progress attempts per user/interview
+InterviewAttemptSchema.index({ userId: 1, interviewId: 1, status: 1 }, { unique: true, partialFilterExpression: { status: 'in-progress' } });
 export const InterviewAttempt = mongoose.model("InterviewAttempt", InterviewAttemptSchema);

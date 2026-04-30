@@ -3,6 +3,7 @@ import {
   createInterview,
   startInterview,
   submitAnswer,
+  getQuestionAnswerStatus,
   completeInterview,
   getInterviewDetails,
   getWorkspaceInterviews,
@@ -17,6 +18,8 @@ router.use(verifyToken);
 router.post('/create', createInterview);
 
 router.post('/submit-answer', submitAnswer);
+
+router.get('/question/:questionId/status', getQuestionAnswerStatus);
 
 router.post('/:interviewId/start', startInterview);
 

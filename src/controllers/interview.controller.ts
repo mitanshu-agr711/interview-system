@@ -366,6 +366,84 @@ export const submitAnswer = async (req: Request, res: Response) :Promise<void>=>
 };
 
 /*
+ Get answer status for a question in current user's attempts
+ */
+export const getQuestionAnswerStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { questionId } = req.params;
+    const userId = req.userId;
+
+    if (!userId) {
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
+    }
+
+    if (!questionId || !mongoose.isValidObjectId(questionId)) {
+      res.status(400).json({ error: 'Invalid questionId' });
+      return;
+    }
+
+    const [answer] = await Answer.aggregate([
+      {
+        $match: {
+          questionId: new mongoose.Types.ObjectId(questionId),
+        },
+      },
+      {
+        $lookup: {
+          from: InterviewAttempt.collection.name,
+          localField: 'attemptId',
+          foreignField: '_id',
+          as: 'attempt',
+        },
+      },
+      {
+        $unwind: '$attempt',
+      },
+      {
+        $match: {
+          'attempt.userId': new mongoose.Types.ObjectId(userId),
+        },
+      },
+      {
+        $sort: {
+          updatedAt: -1,
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          questionId: 1,
+          correctedAnswer: 1,
+          isCorrect: 1,
+        },
+      },
+      {
+        $limit: 1,
+      },
+    ]);
+
+    if (!answer) {
+      res.status(404).json({ error: 'Answer not found for this question' });
+      return;
+    }
+
+    console.log('Fetched answer status by questionId:', answer);
+
+    res.status(200).json({
+      success: true,
+     correctedAnswer:answer.correctedAnswer,
+      isCorrect: answer.isCorrect,
+    });
+    return;
+  } catch (error) {
+    console.error('Error fetching answer status by questionId:', error);
+    res.status(500).json({ error: 'Failed to fetch answer status' });
+    return;
+  }
+};
+
+/*
  Mark interview as completed
  */
 export const completeInterview = async (req: Request, res: Response) :Promise<void>=> {

@@ -218,7 +218,7 @@ export const startInterview = async (req: Request, res: Response) :Promise<void>
         });
       } catch (err) {
         // If duplicate key error, fetch the existing attempt
-        if (err.code === 11000) {
+        if ((err as any).code === 11000) {
           attempt = await InterviewAttempt.findOne({
             interviewId,
             userId: new mongoose.Types.ObjectId(userId),
@@ -227,6 +227,11 @@ export const startInterview = async (req: Request, res: Response) :Promise<void>
         } else {
           throw err; // rethrow other errors
         }
+      }
+
+      // Ensure attempt exists before using it
+      if (!attempt) {
+        throw new Error('Failed to create or retrieve interview attempt');
       }
     }
 
@@ -522,11 +527,12 @@ export const completeInterview = async (req: Request, res: Response) :Promise<vo
 /*
  Fetch interview with all questions and answers
  */
-export const getInterviewDetails = async (req: Request, res: Response) => {
+export const getInterviewDetails = async (req: Request, res: Response): Promise<void> => {
   const { attemptId } = req.params;
 
   if (!mongoose.isValidObjectId(attemptId)) {
-    return res.status(400).json({ error: "Invalid attemptId" });
+    res.status(400).json({ error: "Invalid attemptId" });
+    return;
   }
 
   const attempt = await InterviewAttempt.findById(attemptId)
@@ -534,7 +540,8 @@ export const getInterviewDetails = async (req: Request, res: Response) => {
     .lean();
 
   if (!attempt) {
-    return res.status(404).json({ error: "Attempt not found" });
+    res.status(404).json({ error: "Attempt not found" });
+    return;
   }
 
   const interview = attempt.interviewId as any;

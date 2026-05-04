@@ -182,6 +182,10 @@ export const startInterview = async (req, res) => {
                     throw err; // rethrow other errors
                 }
             }
+            // Ensure attempt exists before using it
+            if (!attempt) {
+                throw new Error('Failed to create or retrieve interview attempt');
+            }
         }
         const questions = await Question.find({ interviewId }).select('-correctAnswer');
         res.status(200).json({
@@ -338,7 +342,7 @@ export const getQuestionAnswerStatus = async (req, res) => {
                 $project: {
                     _id: 0,
                     questionId: 1,
-                    shortReason: 1,
+                    correctedAnswer: 1,
                     isCorrect: 1,
                 },
             },
@@ -350,10 +354,10 @@ export const getQuestionAnswerStatus = async (req, res) => {
             res.status(404).json({ error: 'Answer not found for this question' });
             return;
         }
+        console.log('Fetched answer status by questionId:', answer);
         res.status(200).json({
             success: true,
-            questionId: String(answer.questionId),
-            shortReason: answer.shortReason,
+            correctedAnswer: answer.correctedAnswer,
             isCorrect: answer.isCorrect,
         });
         return;
@@ -436,13 +440,15 @@ export const completeInterview = async (req, res) => {
 export const getInterviewDetails = async (req, res) => {
     const { attemptId } = req.params;
     if (!mongoose.isValidObjectId(attemptId)) {
-        return res.status(400).json({ error: "Invalid attemptId" });
+        res.status(400).json({ error: "Invalid attemptId" });
+        return;
     }
     const attempt = await InterviewAttempt.findById(attemptId)
         .populate("interviewId")
         .lean();
     if (!attempt) {
-        return res.status(404).json({ error: "Attempt not found" });
+        res.status(404).json({ error: "Attempt not found" });
+        return;
     }
     const interview = attempt.interviewId;
     const questions = await Question.find({ interviewId: interview._id }).lean();

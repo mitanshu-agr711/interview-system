@@ -8,6 +8,9 @@ export interface IAnswer extends Document {
   shortReason: string;
   correctedAnswer: string;
   timeTaken?: number;
+  marks: number;
+percentage?: string;
+normalizedScore?: number;
 }
 
 const answerSchema: Schema = new Schema(
@@ -46,6 +49,9 @@ const answerSchema: Schema = new Schema(
       type: Number,
       min: 0,
     },
+    marks: { type: Number, default: 0 },
+percentage: { type: String, default: "0%" },
+normalizedScore: { type: Number, default: 0 },
   },
   {
     timestamps: true,

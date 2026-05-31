@@ -109,7 +109,36 @@ export const evaluateAnswer = async (
   is_correct: boolean;
   short_reason: string;
   corrected_answer: string;
+  marks?: number;
+  percentage?: string;
+  normalized_score?: number;
 }> => {
+  const pyUrl = process.env.PY_EVAL_URL || 'http://localhost:8000/evaluate';
+
+  // Try Python evaluator first (Option B)
+  try {
+    const res = await fetch(pyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, correct_answer: correctAnswer, student_answer: userAnswer }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        is_correct: Boolean(data.is_correct),
+        short_reason: data.short_reason || data.short_reason || data.feedback || '',
+        corrected_answer: data.corrected_answer || data.correctedAnswer || '',
+        marks: typeof data.marks === 'number' ? data.marks : undefined,
+        percentage: data.percentage || undefined,
+        normalized_score: typeof data.normalized_score === 'number' ? data.normalized_score : (typeof data.normalizedScore === 'number' ? data.normalizedScore : undefined),
+      };
+    }
+  } catch (err) {
+    console.warn('Python evaluator not available, falling back to Groq:', err);
+  }
+
+  // Fallback to Groq if Python evaluator fails
   try {
     const prompt = `
 Evaluate the correctness of a user's answer:
@@ -121,18 +150,29 @@ User answer: ${userAnswer}
 Return JSON in this exact format:
 {
   "is_correct": true/false,
+  "marks": 0-100,
+  "percentage": "75%",
+  "normalized_score": 0.0-1.0,
   "short_reason": "brief explanation",
   "corrected_answer": "the correct answer"
 }
 `;
 
     let text = await generateWithGroq(prompt);
-    text = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(text);
-    
+    text = text.replace(/```json|```/g, '').trim();
+    const parsed: any = JSON.parse(text);
+    return {
+      is_correct: Boolean(parsed.is_correct),
+      short_reason: parsed.short_reason || parsed.shortReason || '',
+      corrected_answer: parsed.corrected_answer || parsed.correctedAnswer || '',
+      marks: typeof parsed.marks === 'number' ? parsed.marks : undefined,
+      percentage: parsed.percentage || undefined,
+      normalized_score: typeof parsed.normalized_score === 'number' ? parsed.normalized_score : (typeof parsed.normalizedScore === 'number' ? parsed.normalizedScore : undefined),
+    };
+
   } catch (err) {
-    console.error("Groq Evaluate Error:", err);
-    throw new Error("Failed to evaluate answer");
+    console.error('Groq Evaluate Error:', err);
+    throw new Error('Failed to evaluate answer');
   }
 };
 

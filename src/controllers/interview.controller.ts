@@ -54,9 +54,32 @@ const updateAttemptAnalytics = async (
   const answeredQuestions = stats?.answeredQuestions ?? 0;
   const correctAnswers = stats?.correctAnswers ?? 0;
   const wrongAnswers = Math.max(answeredQuestions - correctAnswers, 0);
-  const scorePercentage = totalQuestions > 0
-    ? Math.round((correctAnswers / totalQuestions) * 100)
-    : 0;
+
+  // Try to compute average normalized score if answers include it
+  const [normStats] = await Answer.aggregate([
+    {
+      $match: {
+        attemptId: new mongoose.Types.ObjectId(String(attempt._id)),
+        normalizedScore: { $exists: true },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        avgNormalized: { $avg: '$normalizedScore' },
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
+  let scorePercentage = 0;
+  if (normStats && normStats.count > 0) {
+    scorePercentage = Math.round((normStats.avgNormalized ?? 0) * 100);
+  } else {
+    scorePercentage = totalQuestions > 0
+      ? Math.round((correctAnswers / totalQuestions) * 100)
+      : 0;
+  }
 
   attempt.totalQuestions = totalQuestions;
   attempt.answeredQuestions = answeredQuestions;
@@ -68,6 +91,7 @@ const updateAttemptAnalytics = async (
 
   return attempt;
 };
+
 
 
 /* Creates a new interview in a workspace
@@ -341,6 +365,9 @@ export const submitAnswer = async (req: Request, res: Response) :Promise<void>=>
         shortReason: evaluation.short_reason,
         correctedAnswer: evaluation.corrected_answer,
         timeTaken,
+        marks: typeof evaluation.marks === 'number' ? evaluation.marks : 0,
+        percentage: evaluation.percentage || (typeof evaluation.marks === 'number' ? `${evaluation.marks}%` : '0%'),
+        normalizedScore: typeof evaluation.normalized_score === 'number' ? evaluation.normalized_score : (typeof evaluation.normalized_score === 'number' ? evaluation.normalized_score : (typeof evaluation.marks === 'number' ? (evaluation.marks/100) : 0)),
       },
       { new: true, upsert: true } // Create if doesn't exist
     );
@@ -360,6 +387,9 @@ export const submitAnswer = async (req: Request, res: Response) :Promise<void>=>
         correctAnswers: attempt.correctAnswers,
         wrongAnswers: attempt.wrongAnswers,
         scorePercentage: attempt.scorePercentage,
+        marks: typeof evaluation.marks === 'number' ? evaluation.marks : 0,
+        percentage: evaluation.percentage || (typeof evaluation.marks === 'number' ? `${evaluation.marks}%` : '0%'),
+        normalizedScore: typeof evaluation.normalized_score === 'number' ? evaluation.normalized_score : (typeof evaluation.normalized_score === 'number' ? evaluation.normalized_score : (typeof evaluation.marks === 'number' ? (evaluation.marks/100) : 0)),
       },
     });
     return;
@@ -433,7 +463,7 @@ export const getQuestionAnswerStatus = async (req: Request, res: Response): Prom
       return;
     }
 
-    console.log('Fetched answer status by questionId:', answer);
+    // console.log('Fetched answer status by questionId:', answer);
 
     res.status(200).json({
       success: true,
@@ -564,6 +594,9 @@ export const getInterviewDetails = async (req: Request, res: Response): Promise<
       isCorrect: answer?.isCorrect || false,
       explanation: answer?.shortReason || null,
       timeTaken: answer?.timeTaken || null,
+      marks: typeof answer?.marks === 'number' ? answer?.marks : null,
+      percentage: answer?.percentage || null,
+      normalizedScore: typeof answer?.normalizedScore === 'number' ? answer?.normalizedScore : null,
       answered: !!answer,
     };
   });
